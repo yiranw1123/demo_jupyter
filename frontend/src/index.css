@@ -57,3 +57,13 @@
 .step-slide-in {
   animation: stepSlideIn 0.4s ease-in-out forwards;
 }
+
+/* Streaming cursor animation */
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: cursorBlink 1s infinite;
+}
