@@ -998,7 +998,7 @@ const Onboarding = ({ onComplete }) => {
                   Back
                 </button>
 
-                {isAllContentRated() && (
+                {getRatedContentCount() > 0 && (
                   <button
                     onClick={handleFinalNext}
                     className="
@@ -1010,7 +1010,7 @@ const Onboarding = ({ onComplete }) => {
                     "
                     style={{animation: 'slideInFromTop 0.3s ease-out forwards'}}
                   >
-                    Complete Setup
+                    Next
                   </button>
                 )}
               </div>
