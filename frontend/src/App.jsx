@@ -3,41 +3,41 @@ import { marked } from 'marked'
 import Onboarding from './Onboarding'
 
 function App() {
-  const [loading, setLoading] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(true) // Always start with onboarding
   const [persona, setPersona] = useState(null)
   const [streamingPersonaText, setStreamingPersonaText] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamComplete, setStreamComplete] = useState(false)
-  const [shouldStartStreaming, setShouldStartStreaming] = useState(false)
+  const [userProfile, setUserProfile] = useState(null)
+  const [isGeneratingPersona, setIsGeneratingPersona] = useState(false)
+  const [personaError, setPersonaError] = useState(null)
+  const [personaLoaded, setPersonaLoaded] = useState(false)
+  const [startStreaming, setStartStreaming] = useState(false)
 
+  // No initial persona fetching - always start with onboarding
+
+  // Character streaming effect - only trigger when explicitly requested
   useEffect(() => {
-    const fetchPersona = async () => {
-      try {
-        const personaResponse = await fetch('/persona.json')
-        const personaData = await personaResponse.json()
-        setPersona(personaData)
-      } catch (error) {
-        console.error('Failed to load persona:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (!startStreaming || !persona?.persona) {
+      console.log('Streaming effect: not ready', { startStreaming, hasPersona: !!persona?.persona })
+      return
+    }
+    
+    // Don't stream if already streaming
+    if (isStreaming) {
+      console.log('Streaming effect: already streaming, skipping')
+      return
     }
 
-    fetchPersona()
-  }, [])
+    console.log('Starting streaming for persona text:', {
+      personaLength: persona.persona.length,
+      startStreaming: true
+    })
 
-  // Character streaming effect for persona text
-  useEffect(() => {
-    if (!persona?.persona) return
-    if (!shouldStartStreaming) return
-    if (isStreaming || streamComplete) return
-
-    console.log('Starting streaming for persona text')
     const fullText = persona.persona
     setStreamingPersonaText('')
     setIsStreaming(true)
-    setStreamComplete(false)
 
     let streamInterval = null
 
@@ -53,9 +53,10 @@ function App() {
           clearInterval(streamInterval)
           setIsStreaming(false)
           setStreamComplete(true)
+          setStartStreaming(false) // Reset trigger
           console.log('Streaming complete')
         }
-      }, 30) // 30ms per character for smooth streaming
+      }, 20) // 20ms per character for faster streaming
     }, 500) // 500ms delay before starting
 
     return () => {
@@ -64,25 +65,114 @@ function App() {
         clearInterval(streamInterval)
       }
     }
-  }, [persona?.persona, shouldStartStreaming])
+  }, [startStreaming, persona?.persona]) // Trigger on startStreaming flag
 
-  const handleOnboardingComplete = () => {
-    // Profile data from onboarding is stored, but we now display persona from persona.json
+  const handleOnboardingComplete = async (profile) => {
+    console.log('Onboarding completed with profile:', profile)
+    
+    // Store user profile and redirect to persona page immediately
+    setUserProfile(profile)
     setShowOnboarding(false)
-    // Reset streaming state and trigger new streaming animation
-    setStreamComplete(false)
-    setIsStreaming(false)
-    setStreamingPersonaText('')
-    setShouldStartStreaming(true)
+    setLoading(false) // Don't show loading since we'll show cooking message
+    
+    // Start persona generation
+    setIsGeneratingPersona(true)
+    setPersonaError(null)
+    setPersonaLoaded(false)
+    setStartStreaming(false)
+    
+    try {
+      console.log('Calling persona generation API with profile:', JSON.stringify(profile, null, 2))
+      console.log('Making fetch request to:', 'http://localhost:8000/api/generate-persona')
+      
+      const response = await fetch('http://localhost:8000/api/generate-persona', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profile)
+      })
+      
+      console.log('API response status:', response.status)
+      console.log('API response ok:', response.ok)
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log('API response result:', result)
+        console.log('Result keys:', Object.keys(result))
+        
+        // Use persona data directly from API response
+        const personaData = result.persona_data
+        console.log('Extracted persona_data:', personaData)
+        console.log('Persona data keys:', personaData ? Object.keys(personaData) : 'null')
+        console.log('Persona text length:', personaData?.persona?.length)
+        console.log('Persona text sample:', personaData?.persona?.substring(0, 100))
+        
+        // Validate persona data before setting state
+        if (!personaData || !personaData.persona) {
+          console.error('Invalid persona data received:', personaData)
+          setPersonaError('Invalid persona data received from API')
+          setIsGeneratingPersona(false)
+          return
+        }
+        
+        console.log('Persona data is valid, setting state...')
+        
+        // Set persona data
+        console.log('About to set persona state...')
+        setPersona(personaData)
+        setPersonaLoaded(true)
+        console.log('Persona state set')
+        
+        // Reset streaming states and trigger streaming
+        setStreamComplete(false)
+        setIsStreaming(false)
+        setStreamingPersonaText('')
+        
+        // Trigger streaming with a small delay to ensure state is set
+        setTimeout(() => {
+          console.log('Triggering streaming animation...')
+          setStartStreaming(true)
+        }, 100)
+        
+        
+        // Stop generating after persona is set
+        setIsGeneratingPersona(false)
+        console.log('Persona loaded, streaming should start automatically')
+      } else {
+        console.error('Failed to generate persona:', response.statusText)
+        const errorText = await response.text()
+        console.error('Error response:', errorText)
+        setPersonaError(`Failed to generate persona: ${response.statusText}`)
+        setIsGeneratingPersona(false)
+      }
+    } catch (error) {
+      console.error('Error calling persona generation API:', error)
+      console.error('Error stack:', error.stack)
+      setPersonaError(`Error: ${error.message}`)
+      setIsGeneratingPersona(false)
+    }
   }
 
   const handleRestartOnboarding = () => {
+    console.log('handleRestartOnboarding called! Current state:', {
+      showOnboarding,
+      isGeneratingPersona,
+      personaError,
+      personaLoaded,
+      persona: !!persona
+    })
     setShowOnboarding(true)
-    // Reset streaming state
+    // Reset all states
+    setPersona(null)
+    setUserProfile(null)
+    setIsGeneratingPersona(false)
     setStreamComplete(false)
     setIsStreaming(false)
     setStreamingPersonaText('')
-    setShouldStartStreaming(false)
+    setPersonaError(null)
+    setPersonaLoaded(false)
+    setStartStreaming(false)
   }
 
   if (showOnboarding) {
@@ -96,7 +186,35 @@ function App() {
           Your Agent Profile
         </h1>
         
-        {persona && (persona.role || persona.area || persona.persona) && (
+        {isGeneratingPersona ? (
+          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-8 mb-6 text-center">
+            <div className="mb-4">
+              <div className="text-6xl mb-4">🍳</div>
+              <h2 className="text-2xl font-bold text-orange-800 mb-2">Your Profile is cooking....</h2>
+              <p className="text-orange-700">
+                We're analyzing your preferences to create your personalized AI agent profile.
+              </p>
+            </div>
+            <div className="flex justify-center">
+              <svg className="animate-spin h-8 w-8 text-orange-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          </div>
+        ) : personaError ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6 text-center">
+            <div className="text-4xl mb-3">❌</div>
+            <h2 className="text-xl font-bold text-red-800 mb-2">Generation Failed</h2>
+            <p className="text-red-700 mb-4">{personaError}</p>
+            <button
+              onClick={handleRestartOnboarding}
+              className="bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : personaLoaded && persona && (persona.role || persona.area || persona.persona) ? (
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
             <div className="mb-2">
               <h2 className="text-lg font-semibold text-indigo-800">Your Persona</h2>
@@ -115,7 +233,7 @@ function App() {
               {persona.persona && (
                 <div>
                   <span className="font-medium">Persona:</span>
-                  {isStreaming || !streamComplete ? (
+                  {!streamComplete ? (
                     <div className="mt-2 text-sm leading-relaxed prose prose-sm prose-indigo max-w-none">
                       <div 
                         dangerouslySetInnerHTML={{
@@ -132,29 +250,6 @@ function App() {
                 </div>
               )}
             </div>
-          </div>
-        )}
-        
-        {loading ? (
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading your profile...</p>
-          </div>
-        ) : !persona || (!persona.role && !persona.area && !persona.persona) ? (
-          <div className="text-center py-8">
-            <div className="text-gray-500 mb-4">
-              <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Profile Found</h3>
-              <p className="text-gray-600">Complete the onboarding process to generate your AI agent profile.</p>
-            </div>
-            <button
-              onClick={handleRestartOnboarding}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-            >
-              Start Onboarding
-            </button>
           </div>
         ) : null}
       </div>

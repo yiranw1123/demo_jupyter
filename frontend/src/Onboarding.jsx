@@ -321,16 +321,64 @@ const Onboarding = ({ onComplete }) => {
   }
 
   const handleFinalNext = () => {
-    const selectedChallengeData = challenges.filter(c => selectedChallenges.includes(c.id))
-    const selectedTrustedSourcesData = trustedSources.filter(s => selectedTrustedSources.includes(s.id))
+    const selectedChallengeData = challenges.filter(c => selectedChallenges.includes(c.id)).map(c => ({
+      label: c.label,
+      description: c.description
+    }))
     
-    onComplete({ 
+    const selectedTrustedSourcesData = trustedSources.filter(s => selectedTrustedSources.includes(s.id)).map(s => ({
+      name: s.name,
+      description: s.description
+    }))
+
+    // Create content calibration categorized by rating (read, want, pass)
+    const contentCalibration = {
+      read: [],
+      want: [],
+      pass_on: []
+    }
+
+    Object.keys(contentRatings).forEach(contentId => {
+      const content = sampleContent.find(c => c.id === contentId)
+      const contentData = {
+        title: content?.title,
+        tags: content?.tags,
+        source: content?.source
+      }
+      
+      const rating = contentRatings[contentId]
+      if (rating === 'read') {
+        contentCalibration.read.push(contentData)
+      } else if (rating === 'want') {
+        contentCalibration.want.push(contentData)
+      } else if (rating === 'not') {
+        contentCalibration.pass_on.push(contentData)
+      }
+    })
+    
+    const userProfile = {
       category: selectedCategory, 
       role: selectedRole,
       challenges: selectedChallengeData,
       trustedSources: selectedTrustedSourcesData,
-      contentPreferences: contentRatings
-    })
+      contentCalibration: contentCalibration,
+      timestamp: new Date().toISOString()
+    }
+
+    // Save user profile to JSON file locally
+    const jsonData = JSON.stringify(userProfile, null, 2)
+    const blob = new Blob([jsonData], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `user-profile-${Date.now()}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    // Immediately redirect to persona page - API call will happen there
+    onComplete(userProfile)
   }
 
   const getChallengeDescription = (challengeId) => {
