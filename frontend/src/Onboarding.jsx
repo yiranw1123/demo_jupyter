@@ -11,11 +11,43 @@ const Onboarding = ({ onComplete }) => {
   const [showCustomInput, setShowCustomInput] = useState(false)
   
   // Step 3 states
-  const [trustedSource, setTrustedSource] = useState('')
+  const [selectedTrustedSources, setSelectedTrustedSources] = useState([])
   const [customTrustedSource, setCustomTrustedSource] = useState('')
   const [showCustomSourceInput, setShowCustomSourceInput] = useState(false)
   const [contentRatings, setContentRatings] = useState({})
   const [currentSection, setCurrentSection] = useState(1) // 1 for trusted source, 2 for content calibration
+  const [trustedSources, setTrustedSources] = useState([
+    {
+      id: 'ben-thompson',
+      name: 'Ben Thompson',
+      company: 'Stratechery',
+      description: 'Strategic tech analysis'
+    },
+    {
+      id: 'a16z',
+      name: 'Andreessen Horowitz',
+      company: 'a16z',
+      description: 'VC insights & trends'
+    },
+    {
+      id: 'latent-space',
+      name: 'Latent Space',
+      company: 'Podcast',
+      description: 'AI engineering deep dives'
+    },
+    {
+      id: 'lex-fridman',
+      name: 'Lex Fridman',
+      company: 'Podcast',
+      description: 'Long-form tech conversations'
+    },
+    {
+      id: 'greylock',
+      name: 'Greylock Partners',
+      company: 'VC Fund',
+      description: 'Enterprise & AI insights'
+    }
+  ])
 
   const categories = [
     {
@@ -132,38 +164,6 @@ const Onboarding = ({ onComplete }) => {
     }
   ]
 
-  const trustedSources = [
-    {
-      id: 'ben-thompson',
-      name: 'Ben Thompson',
-      company: 'Stratechery',
-      description: 'Strategic tech analysis'
-    },
-    {
-      id: 'a16z',
-      name: 'Andreessen Horowitz',
-      company: 'a16z',
-      description: 'VC insights & trends'
-    },
-    {
-      id: 'latent-space',
-      name: 'Latent Space',
-      company: 'Podcast',
-      description: 'AI engineering deep dives'
-    },
-    {
-      id: 'lex-fridman',
-      name: 'Lex Fridman',
-      company: 'Podcast',
-      description: 'Long-form tech conversations'
-    },
-    {
-      id: 'greylock',
-      name: 'Greylock Partners',
-      company: 'VC Fund',
-      description: 'Enterprise & AI insights'
-    }
-  ]
 
   const sampleContent = [
     {
@@ -288,21 +288,26 @@ const Onboarding = ({ onComplete }) => {
   }
 
   const handleTrustedSourceSelect = (sourceId) => {
-    setTrustedSource(sourceId)
+    if (selectedTrustedSources.includes(sourceId)) {
+      setSelectedTrustedSources(selectedTrustedSources.filter(id => id !== sourceId))
+    } else if (selectedTrustedSources.length < 3) {
+      setSelectedTrustedSources([...selectedTrustedSources, sourceId])
+    }
     setShowCustomSourceInput(false)
   }
 
   const handleCustomTrustedSourceAdd = () => {
-    if (customTrustedSource.trim()) {
+    if (customTrustedSource.trim() && selectedTrustedSources.length < 3) {
       const customId = `custom-${Date.now()}`
-      trustedSources.push({
+      const newSource = {
         id: customId,
         name: customTrustedSource.trim(),
-        company: 'Custom Source',
-        description: 'Your trusted source',
+        company: '',
+        description: 'Your custom source',
         isCustom: true
-      })
-      setTrustedSource(customId)
+      }
+      setTrustedSources([...trustedSources, newSource])
+      setSelectedTrustedSources([...selectedTrustedSources, customId])
       setCustomTrustedSource('')
       setShowCustomSourceInput(false)
     }
@@ -317,13 +322,13 @@ const Onboarding = ({ onComplete }) => {
 
   const handleFinalNext = () => {
     const selectedChallengeData = challenges.filter(c => selectedChallenges.includes(c.id))
-    const selectedTrustedSourceData = trustedSources.find(s => s.id === trustedSource)
+    const selectedTrustedSourcesData = trustedSources.filter(s => selectedTrustedSources.includes(s.id))
     
     onComplete({ 
       category: selectedCategory, 
       role: selectedRole,
       challenges: selectedChallengeData,
-      trustedSource: selectedTrustedSourceData,
+      trustedSources: selectedTrustedSourcesData,
       contentPreferences: contentRatings
     })
   }
@@ -346,10 +351,6 @@ const Onboarding = ({ onComplete }) => {
     return 'your interests'
   }
 
-  const getTrustedSourceName = () => {
-    const source = trustedSources.find(s => s.id === trustedSource)
-    return source ? source.name : ''
-  }
 
   const getContentTypeIcon = (type) => {
     switch (type) {
@@ -723,37 +724,47 @@ const Onboarding = ({ onComplete }) => {
                   Who do you trust for insights on {getFirstChallengeLabel()}?
                 </h1>
                 <p className="text-lg text-gray-600 mb-2">
-                  Based on your focus on <span className="font-semibold text-indigo-600">{getFirstChallengeLabel()}</span>, pick one thought leader, company, podcast, or channel you'd naturally turn to.
+                  Based on your focus on <span className="font-semibold text-indigo-600">{getFirstChallengeLabel()}</span>, pick up to 3 thought leaders, companies, podcasts, or channels you'd naturally turn to.
                 </p>
                 <p className="text-base text-gray-500">
-                  Choose one, or type your own.
+                  Pick up to 3 that resonate with you.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+              <div className="relative mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="text-sm text-gray-500">Trusted Sources</div>
+                  <div className="text-sm text-indigo-600 font-medium">
+                    {selectedTrustedSources.length} of 3 selected
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 max-h-80 overflow-y-auto pr-2">
                 {trustedSources.map((source) => (
                   <div
                     key={source.id}
                     onClick={() => handleTrustedSourceSelect(source.id)}
                     className={`
-                      relative bg-white rounded-xl p-6 border-2 cursor-pointer
+                      relative bg-white rounded-lg p-3 border-2 cursor-pointer
                       transition-all duration-300 ease-out transform
                       hover:shadow-lg
-                      ${trustedSource === source.id
+                      ${selectedTrustedSources.includes(source.id)
                         ? 'border-indigo-500 shadow-lg ring-4 ring-indigo-100' 
-                        : 'border-gray-200 shadow-md hover:border-indigo-300'
+                        : selectedTrustedSources.length >= 3
+                          ? 'border-gray-200 shadow-md opacity-50 cursor-not-allowed'
+                          : 'border-gray-200 shadow-md hover:border-indigo-300'
                       }
                     `}
                   >
                     <div className="text-center">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      <h3 className="text-base font-semibold text-gray-900 mb-1">
                         {source.name}
                       </h3>
-                      <p className="text-sm text-indigo-600 font-medium mb-2">{source.company}</p>
-                      <p className="text-sm text-gray-600">{source.description}</p>
+                      {source.company && <p className="text-xs text-indigo-600 font-medium mb-1">{source.company}</p>}
+                      <p className="text-xs text-gray-600">{source.description}</p>
                     </div>
                     
-                    {trustedSource === source.id && (
+                    {selectedTrustedSources.includes(source.id) && (
                       <div className="absolute top-4 right-4 w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center transition-all duration-300 ease-out animate-slideInFromTop">
                         <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -765,11 +776,14 @@ const Onboarding = ({ onComplete }) => {
 
                 {/* Add your own */}
                 <div
-                  onClick={() => setShowCustomSourceInput(true)}
+                  onClick={() => selectedTrustedSources.length < 3 && setShowCustomSourceInput(true)}
                   className={`
-                    bg-white rounded-xl p-6 border-2 border-dashed cursor-pointer
+                    bg-white rounded-lg p-3 border-2 border-dashed cursor-pointer
                     transition-all duration-200 ease-out
-                    border-gray-300 hover:border-indigo-400 hover:bg-indigo-50
+                    ${selectedTrustedSources.length >= 3 
+                      ? 'border-gray-200 opacity-50 cursor-not-allowed'
+                      : 'border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
+                    }
                   `}
                 >
                   {showCustomSourceInput ? (
@@ -778,32 +792,64 @@ const Onboarding = ({ onComplete }) => {
                         type="text"
                         value={customTrustedSource}
                         onChange={(e) => setCustomTrustedSource(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleCustomTrustedSourceAdd()}
-                        onBlur={() => customTrustedSource.trim() ? handleCustomTrustedSourceAdd() : setShowCustomSourceInput(false)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && selectedTrustedSources.length < 3) {
+                            handleCustomTrustedSourceAdd()
+                          }
+                        }}
+                        onBlur={() => {
+                          if (customTrustedSource.trim() && selectedTrustedSources.length < 3) {
+                            handleCustomTrustedSourceAdd()
+                          } else {
+                            setShowCustomSourceInput(false)
+                          }
+                        }}
                         placeholder="Type your trusted source..."
-                        className="w-full text-lg font-semibold text-gray-900 bg-transparent border-none outline-none placeholder-gray-400 text-center"
+                        className="w-full text-base font-semibold text-gray-900 bg-transparent border-none outline-none placeholder-gray-400 text-center"
                         autoFocus
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {3 - selectedTrustedSources.length} more source{3 - selectedTrustedSources.length !== 1 ? 's' : ''} available
+                      </p>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Other → Add your own</h3>
-                      <p className="text-sm text-gray-500">Someone else you trust for insights</p>
+                      <h3 className="text-base font-semibold text-gray-700 mb-1">
+                        {selectedTrustedSources.length >= 3 ? 'Maximum reached' : 'Other → Add your own'}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {selectedTrustedSources.length >= 3 
+                          ? 'You\'ve selected 3 sources' 
+                          : 'Someone else you trust for insights'
+                        }
+                      </p>
                     </div>
                   )}
                 </div>
-              </div>
-
-              {trustedSource && (
-                <div className="text-center mb-8 opacity-0"
-                     style={{animation: 'slideInFromTop 0.5s ease-out forwards'}}>
-                  <p className="text-lg text-indigo-800">
-                    Got it. We'll anchor your feed around <span className="font-semibold">
-                      {getTrustedSourceName()}'s
-                    </span> vibe.
-                  </p>
                 </div>
-              )}
+
+                {selectedTrustedSources.length > 0 && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6 opacity-0"
+                       style={{animation: 'slideInFromTop 0.5s ease-out forwards'}}>
+                    <p className="text-indigo-800 text-center">
+                      Your feed will be anchored around insights from{' '}
+                      {selectedTrustedSources.map((id, index) => {
+                        const source = trustedSources.find(s => s.id === id)
+                        const isLast = index === selectedTrustedSources.length - 1
+                        const isSecondToLast = index === selectedTrustedSources.length - 2
+                        
+                        return (
+                          <span key={id}>
+                            <span className="font-semibold">{source?.name}</span>
+                            {selectedTrustedSources.length > 1 && isSecondToLast ? ' and ' : 
+                             selectedTrustedSources.length > 2 && !isLast ? ', ' : ''}
+                          </span>
+                        )
+                      })}.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <div className="flex justify-between items-center">
                 <button
@@ -822,7 +868,7 @@ const Onboarding = ({ onComplete }) => {
                   Back
                 </button>
 
-                {trustedSource && (
+                {selectedTrustedSources.length > 0 && (
                   <button
                     onClick={() => setCurrentSection(2)}
                     className="
