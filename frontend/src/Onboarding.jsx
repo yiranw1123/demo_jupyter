@@ -48,6 +48,45 @@ const Onboarding = ({ onComplete }) => {
       description: 'Enterprise & AI insights'
     }
   ])
+  
+  const [challenges, setChallenges] = useState([
+    {
+      id: 'ai-business',
+      emoji: '🤖',
+      label: 'AI in Business',
+      description: 'How to actually apply AI at work'
+    },
+    {
+      id: 'gtm-strategy',
+      emoji: '🚀',
+      label: 'GTM Strategy',
+      description: 'Scaling ideas into markets'
+    },
+    {
+      id: 'competitive-intel',
+      emoji: '🕵',
+      label: 'Competitive Intel',
+      description: 'Staying ahead of rivals'
+    },
+    {
+      id: 'product-led-growth',
+      emoji: '📦',
+      label: 'Product-Led Growth',
+      description: 'Letting your product sell itself'
+    },
+    {
+      id: 'team-leadership',
+      emoji: '👥',
+      label: 'Team Leadership',
+      description: 'Building and leading strong teams'
+    },
+    {
+      id: 'market-expansion',
+      emoji: '🌍',
+      label: 'Market Expansion',
+      description: 'Finding new markets to grow'
+    }
+  ])
 
   const categories = [
     {
@@ -125,44 +164,6 @@ const Onboarding = ({ onComplete }) => {
     }, 400)
   }
 
-  const challenges = [
-    {
-      id: 'ai-business',
-      emoji: '🤖',
-      label: 'AI in Business',
-      description: 'How to actually apply AI at work'
-    },
-    {
-      id: 'gtm-strategy',
-      emoji: '🚀',
-      label: 'GTM Strategy',
-      description: 'Scaling ideas into markets'
-    },
-    {
-      id: 'competitive-intel',
-      emoji: '🕵',
-      label: 'Competitive Intel',
-      description: 'Staying ahead of rivals'
-    },
-    {
-      id: 'product-led-growth',
-      emoji: '📦',
-      label: 'Product-Led Growth',
-      description: 'Letting your product sell itself'
-    },
-    {
-      id: 'team-leadership',
-      emoji: '👥',
-      label: 'Team Leadership',
-      description: 'Building and leading strong teams'
-    },
-    {
-      id: 'market-expansion',
-      emoji: '🌍',
-      label: 'Market Expansion',
-      description: 'Finding new markets to grow'
-    }
-  ]
 
 
   const sampleContent = [
@@ -233,13 +234,14 @@ const Onboarding = ({ onComplete }) => {
   const handleCustomChallengeAdd = () => {
     if (customChallenge.trim() && selectedChallenges.length < 3) {
       const customId = `custom-${Date.now()}`
-      challenges.push({
+      const newChallenge = {
         id: customId,
         emoji: '💭',
         label: customChallenge.trim(),
-        description: 'Your custom challenge',
+        description: '',
         isCustom: true
-      })
+      }
+      setChallenges([...challenges, newChallenge])
       setSelectedChallenges([...selectedChallenges, customId])
       setCustomChallenge('')
       setShowCustomInput(false)
@@ -323,7 +325,7 @@ const Onboarding = ({ onComplete }) => {
   const handleFinalNext = () => {
     const selectedChallengeData = challenges.filter(c => selectedChallenges.includes(c.id)).map(c => ({
       label: c.label,
-      description: c.description
+      description: c.description || c.label // Use label as fallback for custom challenges with empty descriptions
     }))
     
     const selectedTrustedSourcesData = trustedSources.filter(s => selectedTrustedSources.includes(s.id)).map(s => ({
@@ -365,25 +367,13 @@ const Onboarding = ({ onComplete }) => {
       timestamp: new Date().toISOString()
     }
 
-    // Save user profile to JSON file locally
-    const jsonData = JSON.stringify(userProfile, null, 2)
-    const blob = new Blob([jsonData], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `user-profile-${Date.now()}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
-    // Immediately redirect to persona page - API call will happen there
+    // Backend will save the profile when generating persona
     onComplete(userProfile)
   }
 
   const getChallengeDescription = (challengeId) => {
     const challenge = challenges.find(c => c.id === challengeId)
-    return challenge ? challenge.description.toLowerCase() : ''
+    return challenge ? challenge.label.toLowerCase() : ''
   }
 
   const getCategoryLabel = (categoryId) => {
@@ -616,13 +606,13 @@ const Onboarding = ({ onComplete }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 max-h-96 overflow-y-auto pr-2">
               {challenges.map((challenge) => (
                 <div
                   key={challenge.id}
                   onClick={() => handleChallengeSelect(challenge.id)}
                   className={`
-                    relative bg-white rounded-xl p-6 border-2 cursor-pointer
+                    relative bg-white rounded-lg p-3 border-2 cursor-pointer
                     transition-all duration-300 ease-out transform
                     hover:shadow-lg
                     ${selectedChallenges.includes(challenge.id)
@@ -633,14 +623,12 @@ const Onboarding = ({ onComplete }) => {
                     }
                   `}
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="text-3xl">{challenge.emoji}</div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {challenge.label}
-                      </h3>
-                      <p className="text-sm text-gray-600">{challenge.description}</p>
-                    </div>
+                  <div className="text-center">
+                    <div className="text-2xl mb-2">{challenge.emoji}</div>
+                    <h3 className="text-base font-semibold text-gray-900 mb-1">
+                      {challenge.label}
+                    </h3>
+                    <p className="text-xs text-gray-600">{challenge.description}</p>
                   </div>
                   
                   {selectedChallenges.includes(challenge.id) && (
@@ -657,7 +645,7 @@ const Onboarding = ({ onComplete }) => {
               <div
                 onClick={() => selectedChallenges.length < 3 && setShowCustomInput(true)}
                 className={`
-                  bg-white rounded-xl p-6 border-2 border-dashed cursor-pointer
+                  bg-white rounded-lg p-3 border-2 border-dashed cursor-pointer
                   transition-all duration-200 ease-out
                   ${selectedChallenges.length >= 3 
                     ? 'border-gray-200 opacity-50 cursor-not-allowed'
@@ -666,28 +654,43 @@ const Onboarding = ({ onComplete }) => {
                 `}
               >
                 {showCustomInput ? (
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl">➕</div>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={customChallenge}
-                        onChange={(e) => setCustomChallenge(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleCustomChallengeAdd()}
-                        onBlur={() => customChallenge.trim() ? handleCustomChallengeAdd() : setShowCustomInput(false)}
-                        placeholder="Type your challenge..."
-                        className="w-full text-lg font-semibold text-gray-900 bg-transparent border-none outline-none placeholder-gray-400"
-                        autoFocus
-                      />
-                    </div>
+                  <div className="text-center">
+                    <input
+                      type="text"
+                      value={customChallenge}
+                      onChange={(e) => setCustomChallenge(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && selectedChallenges.length < 3) {
+                          handleCustomChallengeAdd()
+                        }
+                      }}
+                      onBlur={() => {
+                        if (customChallenge.trim() && selectedChallenges.length < 3) {
+                          handleCustomChallengeAdd()
+                        } else {
+                          setShowCustomInput(false)
+                        }
+                      }}
+                      placeholder="Type your challenge..."
+                      className="w-full text-base font-semibold text-gray-900 bg-transparent border-none outline-none placeholder-gray-400 text-center"
+                      autoFocus
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {3 - selectedChallenges.length} more challenge{3 - selectedChallenges.length !== 1 ? 's' : ''} available
+                    </p>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="text-3xl">➕</div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-700">Add your own</h3>
-                      <p className="text-sm text-gray-500">Something specific to your situation</p>
-                    </div>
+                  <div className="text-center">
+                    <div className="text-2xl mb-2">➕</div>
+                    <h3 className="text-base font-semibold text-gray-700 mb-1">
+                      {selectedChallenges.length >= 3 ? 'Maximum reached' : 'Add your own'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {selectedChallenges.length >= 3 
+                        ? 'You\'ve selected 3 challenges' 
+                        : 'Something specific to your situation'
+                      }
+                    </p>
                   </div>
                 )}
               </div>
