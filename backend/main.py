@@ -60,16 +60,16 @@ class ContentItem(BaseModel):
     source: str
 
 class ContentCalibration(BaseModel):
-    read: List[ContentItem]
-    want: List[ContentItem]
+    read: List[ContentItem] = []
+    want: List[ContentItem] = []
     pass_on: List[ContentItem] = []
 
 class UserProfile(BaseModel):
     category: str
     role: str
-    challenges: List[Challenge]
-    trustedSources: List[TrustedSource]
-    contentCalibration: ContentCalibration
+    challenges: List[Challenge] = []
+    trustedSources: List[TrustedSource] = []
+    contentCalibration: ContentCalibration = ContentCalibration()
     timestamp: str
 
 class PersonaRequest(BaseModel):
@@ -201,10 +201,8 @@ async def generate_persona(user_profile: UserProfile):
         }
     
     except Exception as e:
-        return {
-            "status": "error", 
-            "message": f"Failed to generate persona: {str(e)}"
-        }
+        logger.error(f"Persona generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate persona: {str(e)}")
 
 @app.post("/api/generate-scoring-dimensions")
 async def generate_scoring_dimensions(persona_request: PersonaRequest):
@@ -238,10 +236,8 @@ async def generate_scoring_dimensions(persona_request: PersonaRequest):
         }
     
     except Exception as e:
-        return {
-            "status": "error", 
-            "message": f"Failed to generate scoring dimensions: {str(e)}"
-        }
+        logger.error(f"Scoring dimensions generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate scoring dimensions: {str(e)}")
 
 @app.post("/api/content-pool-ranking")
 async def content_pool_ranking(request: ContentPoolRequest):
@@ -295,10 +291,7 @@ async def content_pool_ranking(request: ContentPoolRequest):
     
     except Exception as e:
         logger.error(f"Content pool ranking error: {e}")
-        return {
-            "status": "error", 
-            "message": f"Failed to rank content pool: {str(e)}"
-        }
+        raise HTTPException(status_code=500, detail=f"Failed to rank content pool: {str(e)}")
 
 async def generate_persona_with_claude(profile: UserProfile) -> str:
     """
@@ -306,8 +299,8 @@ async def generate_persona_with_claude(profile: UserProfile) -> str:
     """
     try:
         # Prepare the prompt for Claude
-        challenge_names = [c.label for c in profile.challenges]
-        source_names = [s.name for s in profile.trustedSources]
+        challenge_names = [c.label for c in profile.challenges] if profile.challenges else []
+        source_names = [s.name for s in profile.trustedSources] if profile.trustedSources else []
         
         # Create content preference summary
         content_prefs = []
